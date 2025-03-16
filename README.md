@@ -1,7 +1,7 @@
 Run main.py
 # This algorithm includes:
-- Use the Segmentation zero-shot learning to identify the object. 
-- Use the Depth estimation zero-shot learning to estimate the depth object.
+- Use the zero-shot learning-based Segmentation to identify the object. 
+- Use the zero-shot learning-Depth estimation to estimate the depth of the object.
 - Use the ICP algorithm (different methods) to estimate the pose of the object.
 # There is flowchart.
 <center>
