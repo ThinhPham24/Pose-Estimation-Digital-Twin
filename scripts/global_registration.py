@@ -28,10 +28,7 @@ def execute_global_ransac_registration(source_down, target_down, source_fpfh,
         ], o3d.pipelines.registration.RANSACConvergenceCriteria(100000, 0.999))
     return result
 
-def preprocess_point_cloud_source(pcd):
-
-    voxel_size = 0.001
-
+def preprocess_point_cloud_source(pcd,  voxel_size):
     radius_normal = voxel_size * 2
     print(":: Estimate normal with search radius %.3f." % radius_normal)
     pcd.estimate_normals(
@@ -73,7 +70,7 @@ def draw_registration_result(source, target, transformation):
 
     source_temp = copy.deepcopy(source)
     target_temp = copy.deepcopy(target)
-    #source_temp.paint_uniform_color([1, 0.706, 0])
+    source_temp.paint_uniform_color([1, 0.706, 0])
     target_temp.paint_uniform_color([1, 0, 0])
     source_temp.transform(transformation)
 

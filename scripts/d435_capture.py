@@ -78,12 +78,12 @@ def get_point_cloud(color_image,depth_intrinsics, depth_image):
     return pcd
 
 
-def remove_flatground (pcd): 
-    z_threshold = 500
+def remove_flatground(pcd): 
+    z_threshold = 100
     #z_threshold = 0.5
     points = np.asarray(pcd.points)
     colors = np.asarray(pcd.colors)
-    mask = points[:,2] < z_threshold
+    mask = points[:,2] > z_threshold
     pcd.points = o3d.utility.Vector3dVector(points[mask]) # normals and colors are unchanged
     pcd.colors = o3d.utility.Vector3dVector(colors[mask]) # normals and colors are unchanged
 

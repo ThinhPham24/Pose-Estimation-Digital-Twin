@@ -50,25 +50,25 @@ if __name__ == "__main__":
         # ----------------------------------------------------------------------------------
         # 4. Registration methods
         # ----------------------------------------------------------------------------------        
-        source = o3d.io.read_point_cloud("/home/ece/new_ws/DigitalTwin_PoseEstimation/data/source/d435_on_ur10e_arm/removed_flatground_and_refined_manually.ply")
-        target = o3d.io.read_point_cloud("/home/ece/new_ws/DigitalTwin_PoseEstimation/data/ply_models/obj1.ply")
+        source = o3d.io.read_point_cloud(R"C:\Users\Thinh\Desktop\DigitalTwin_PoseEstimation\data\source\d435_on_ur10e_arm\Source_ob1.ply")
+        target = o3d.io.read_point_cloud(R"C:\Users\Thinh\Desktop\DigitalTwin_PoseEstimation\data\ply_models\obj1.ply")
 
-        # Scale from mm to m
+        # # Scale from mm to m
         source = scale_point_cloud (source)
 
         # ----------------------------------------------------------------------------------
         # 4.1. Global registration - RANSAC
         # ----------------------------------------------------------------------------------        
-        voxel_size = 0.001
-        source_voxel_size = 0.000
+        voxel_size = 0.01
+        source_voxel_size = 0.005
         target_voxel_size = 0.005
 
-        source_down, source_fpfh = preprocess_point_cloud_source(source)
+        source_down, source_fpfh = preprocess_point_cloud_source(source, source_voxel_size)
 
         target_down, target_fpfh = preprocess_point_cloud(
                                         target, target_voxel_size)
         
-        o3d.visualization.draw_geometries([source_down, target_down])
+        o3d.visualization.draw_geometries([source_down])
 
         result_ransac = execute_global_ransac_registration(source_down, target_down,
                                                     source_fpfh, target_fpfh,
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         draw_registration_result(source_down, target_down, result_ransac.transformation)
 
         print("RANSAC complete. Refining with ICP...")
-        max_correspondence_distance = 0.02  # 2 cm refinement for ICP
+        max_correspondence_distance = 0.002  # 2 cm refinement for ICP
         result_icp = o3d.pipelines.registration.registration_icp(
             source, target, max_correspondence_distance, result_ransac.transformation,
             o3d.pipelines.registration.TransformationEstimationPointToPoint(),
