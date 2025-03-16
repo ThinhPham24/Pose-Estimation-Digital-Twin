@@ -5,7 +5,7 @@ Run main.py
 - Use the ICP algorithm (different methods) to estimate the pose of the object.
 # There is flowchart.
 <center>
-<img src='Assests/Picture.gif'>
+<img src='Assets/Picture.gif'>
 </center>
 # Refs
 1. [Deep Learning-Based Object Pose Estimation: A Comprehensive Survey](https://github.com/CNJianLiu/Awesome-Object-Pose-Estimation)
