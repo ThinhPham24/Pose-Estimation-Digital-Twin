@@ -30,3 +30,6 @@
 ```python
 pip install -r requirements.txt
 ```
+<center>
+<img src='Assets/Result_03_19.gif'>
+</center>
