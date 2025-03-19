@@ -8,3 +8,5 @@ git+https://github.com/THU-MIG/yoloe.git#subdirectory=third_party/CLIP
 git+https://github.com/THU-MIG/yoloe.git#subdirectory=third_party/ml-mobileclip
 git+https://github.com/THU-MIG/yoloe.git#subdirectory=third_party/lvis-api
 git+https://github.com/THU-MIG/yoloe.git
+pyrealsense2
+open3d

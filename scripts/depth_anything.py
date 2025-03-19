@@ -38,7 +38,12 @@ def write_ply_nColor(fn, verts, colors):
         f.write((ply_header % dict(vert_num=len(verts))).encode('utf-8'))
         np.savetxt(f, verts, fmt='%f %f %f %d %d %d ')
 if __name__ == "__main__":
-    DEVICE = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+    # DEVICE = "cuda: 1" if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+    gpu_id = 1  # Change this based on the available GPUs
+    if torch.cuda.device_count() > gpu_id:
+        DEVICE = torch.device(f"cuda:{gpu_id}")
+    else:
+        DEVICE = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     # Depth Any Thing Model
     model_configs = {
         'vits': {'encoder': 'vits', 'features': 64, 'out_channels': [48, 96, 192, 384]},
@@ -50,10 +55,10 @@ if __name__ == "__main__":
     encoder = 'vitl'  # Select encoder: 'vits', 'vitb', 'vitl', 'vitg'
     max_depth = 1
     depth_any_thing = DepthAnythingV2(**model_configs[encoder])
-    depth_any_thing.load_state_dict(torch.load(R'C:\Users\Thinh\Desktop\DigitalTwin_PoseEstimation\checkpoints\depth_anything_v2_vitl.pth', map_location=DEVICE))
+    depth_any_thing.load_state_dict(torch.load(R'/home/airlab/Desktop/DigitalTwin_PoseEstimation/checkpoints/depth_anything_v2_vitl.pth', map_location=DEVICE))
     depth_any_thing = depth_any_thing.to(DEVICE).eval()
     # See Any Thing model
-    see_any_thing = YOLOE("pretrain/yoloe-v8l-seg.pt")
+    see_any_thing = YOLOE("pretrain/yoloe-v8l-seg.pt").to(DEVICE)
     # Handcrafted shape can also be passed, please refer to app.py
     # Multiple boxes or handcrafted shapes can also be passed as visual prompt in an image
     visuals = dict(
@@ -77,6 +82,7 @@ if __name__ == "__main__":
                 return_vpe=True)
     see_any_thing.set_classes(["cube"], see_any_thing.predictor.vpe)
     see_any_thing.predictor = None  # remove VPPredictor
+    
     # Initialize RealSense
     pipeline, alignment = initialize(rs)
 
@@ -97,7 +103,7 @@ if __name__ == "__main__":
         resize_image_color = cv2.resize(image_color,(640,640))
         height, width = color_image.shape[:2]
         # Read the image using OpenCV
-        pred_depth = depth_any_thing.infer_image(resize_image_color, 640)  # Depth estimation model output
+        pred_depth = depth_any_thing.infer_image(resize_image_color)  # Depth estimation model output
         # Resize depth prediction to match original image size
         resized_pred_depth = np.array(Image.fromarray(pred_depth).resize((640, 640), Image.NEAREST))
         # Normalize disparity for depth calculation
@@ -115,11 +121,10 @@ if __name__ == "__main__":
         # Apply median filter (speckle noise filtering)
         filtered_depth = cv2.medianBlur(depth_visual, 5)
         # Aplly mask of YOLOE (see any thing)
-        r = see_any_thing.predict(resize_image_color, save=False)[0]
+        r = see_any_thing.predict(resize_image_color, save=False)[0].to(DEVICE)
         seg_ob = Results(orig_img=r.orig_img,path=r.path,names= r.names,boxes=r.boxes.data, masks=r.masks.data).plot()
         pred_masks = r.masks.data.cpu().numpy()
         final_depth = cv2.bitwise_and(filtered_depth,filtered_depth,mask=pred_masks[0].astype(np.uint8))
-        # print("Maks depth:", mask_depth.max())
         # print("Maks depth:", mask_depth.min())
         # final_depth = remove_flatground(mask_depth)
         cv2.imshow('seg_ob',seg_ob)
@@ -127,12 +132,11 @@ if __name__ == "__main__":
         cv2.destroyAllWindows()
         # Generate 3D point cloud
         # cx, cy = 329.27, 244.46  # Principal point
-        cx, cy = 320, 320
+        cx = 320
+        cy = 320
         x, y = np.meshgrid(np.arange(640), np.arange(640))
-        # fx = 615.75  # Focal length (pixels)
-        # fy = 616.02
-        fx = 470
-        fy = 470
+        fx = 615.75  # Focal length (pixels)
+        fy = 616.02
         x = ((x - cx) / fx)
         y = ((y - cy) / fy)
         # Convert depth to float and scale it to meters
@@ -151,7 +155,7 @@ if __name__ == "__main__":
         pcd.points = o3d.utility.Vector3dVector(points[mask]) # normals and colors are unchanged
         pcd.colors = o3d.utility.Vector3dVector(colors[mask]) # normals and colors are unchanged
 
-        o3d.io.write_point_cloud(R"C:\Users\Thinh\Desktop\DigitalTwin_PoseEstimation\data\source\d435_on_ur10e_arm\Source_ob1.ply", pcd, write_ascii=True)
+        o3d.io.write_point_cloud(R"/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/source/d435_on_ur10e_arm/source_ob1.ply", pcd, write_ascii=True)
         # write_ply('point_cloud.ply',points[mask], colors[mask])
         # Visualize
         o3d.visualization.draw_geometries([pcd])
