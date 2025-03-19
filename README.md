@@ -30,6 +30,7 @@
 ```python
 pip install -r requirements.txt
 ```
+# Current stage 2:
 <center>
-<img src='Assets/Result_03_19.gif'>
+<img src='Assets/result_03_19.gif'>
 </center>
