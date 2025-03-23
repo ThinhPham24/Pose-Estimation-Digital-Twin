@@ -85,7 +85,7 @@ if __name__ == "__main__":
     
     # Initialize RealSense
     pipeline, alignment = initialize(rs)
-
+    i = 0
     while True:
         color_frame, depth_frame, depth_intrinsics = capture_frame(pipeline, alignment)
 
@@ -96,7 +96,9 @@ if __name__ == "__main__":
         color_image = np.asanyarray(color_frame.get_data())
         depth_image = np.asanyarray(depth_frame.get_data())
 
-        # filename = R'C:\Users\Thinh\Desktop\DigitalTwin_PoseEstimation\scripts\color.png'
+
+        filename = 'Test.png'
+        cv2.imwrite(filename, color_image)
         # color_image = Image.open(color_image).convert('RGB')
         
         image_color = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
@@ -135,14 +137,15 @@ if __name__ == "__main__":
         cx = 320
         cy = 320
         x, y = np.meshgrid(np.arange(640), np.arange(640))
-        fx = 615.75  # Focal length (pixels)
+        fx = 615.75  #Focal length (pixels)
         fy = 616.02
         x = ((x - cx) / fx)
         y = ((y - cy) / fy)
         # Convert depth to float and scale it to meters
         z = final_depth # Convert mm to meters if needed
         # Stack into (X, Y, Z) coordinates
-        points = np.stack((x * z, y * z, z), axis=-1).reshape(-1, 3)
+        points = np.stack((np.multiply(x, z), np.multiply(y, z), z), axis=-1).reshape(-1, 3)
+        print("Points", points)
         # Normalize color data
         colors = np.array(resize_image_color).reshape(-1, 3) / 255.0
         # Create Open3D Point Cloud
@@ -152,10 +155,12 @@ if __name__ == "__main__":
         points = np.asarray(pcd.points)
         colors = np.asarray(pcd.colors)  
         mask = points[:,2] > points[:,2].min()
-        pcd.points = o3d.utility.Vector3dVector(points[mask]) # normals and colors are unchanged
+        pcd.points = o3d.utility.Vector3dVector(points[mask]) # normals and colors are unchanged                             
         pcd.colors = o3d.utility.Vector3dVector(colors[mask]) # normals and colors are unchanged
-
-        o3d.io.write_point_cloud(R"/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/source/d435_on_ur10e_arm/source_ob1.ply", pcd, write_ascii=True)
+        pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.01, max_nn=10))
+        pcd.orient_normals_consistent_tangent_plane(k=5) 
+        o3d.io.write_point_cloud(R"/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/source/d435_on_ur10e_arm/source_ob1_{}.ply".format(i), pcd, write_ascii=True)
+        i += 1
         # write_ply('point_cloud.ply',points[mask], colors[mask])
         # Visualize
-        o3d.visualization.draw_geometries([pcd])
+        o3d.visualization.draw_geometries([pcd])                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
