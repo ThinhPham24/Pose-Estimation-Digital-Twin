@@ -39,7 +39,7 @@ def write_ply_nColor(fn, verts, colors):
         np.savetxt(f, verts, fmt='%f %f %f %d %d %d ')
 if __name__ == "__main__":
     # DEVICE = "cuda: 1" if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
-    gpu_id = 1  # Change this based on the available GPUs
+    gpu_id = 0  # Change this based on the available GPUs
     if torch.cuda.device_count() > gpu_id:
         DEVICE = torch.device(f"cuda:{gpu_id}")
     else:
@@ -95,12 +95,6 @@ if __name__ == "__main__":
 
         color_image = np.asanyarray(color_frame.get_data())
         depth_image = np.asanyarray(depth_frame.get_data())
-
-
-        filename = 'Test.png'
-        cv2.imwrite(filename, color_image)
-        # color_image = Image.open(color_image).convert('RGB')
-        
         image_color = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
         resize_image_color = cv2.resize(image_color,(640,640))
         height, width = color_image.shape[:2]
@@ -126,7 +120,7 @@ if __name__ == "__main__":
         r = see_any_thing.predict(resize_image_color, save=False)[0].to(DEVICE)
         seg_ob = Results(orig_img=r.orig_img,path=r.path,names= r.names,boxes=r.boxes.data, masks=r.masks.data).plot()
         pred_masks = r.masks.data.cpu().numpy()
-        final_depth = cv2.bitwise_and(filtered_depth,filtered_depth,mask=pred_masks[0].astype(np.uint8))
+        final_depth = cv2.bitwise_and(disparity,disparity,mask=pred_masks[0].astype(np.uint8))
         # print("Maks depth:", mask_depth.min())
         # final_depth = remove_flatground(mask_depth)
         cv2.imshow('seg_ob',seg_ob)
@@ -137,15 +131,16 @@ if __name__ == "__main__":
         cx = 320
         cy = 320
         x, y = np.meshgrid(np.arange(640), np.arange(640))
-        fx = 615.75  #Focal length (pixels)
-        fy = 616.02
-        x = ((x - cx) / fx)
-        y = ((y - cy) / fy)
+        # fx = 615.75  #Focal length (pixels)
+        # fy = 616.02
+        fx = 470.4
+        fy = 470.4
+        x = ((x - cx) / fx)*1.4 # model is trained by local lenght = 470.4
+        y = ((y - cy) / fy)*1.4
         # Convert depth to float and scale it to meters
-        z = final_depth # Convert mm to meters if needed
+        z = final_depth/100 # 
         # Stack into (X, Y, Z) coordinates
         points = np.stack((np.multiply(x, z), np.multiply(y, z), z), axis=-1).reshape(-1, 3)
-        print("Points", points)
         # Normalize color data
         colors = np.array(resize_image_color).reshape(-1, 3) / 255.0
         # Create Open3D Point Cloud
@@ -163,4 +158,4 @@ if __name__ == "__main__":
         i += 1
         # write_ply('point_cloud.ply',points[mask], colors[mask])
         # Visualize
-        o3d.visualization.draw_geometries([pcd])                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+        o3d.visualization.draw_geometries([pcd]) 

@@ -13,7 +13,7 @@ class CosineSimilarity(nn.Module):
          # Load pre-trained VGG19 model without the classification head
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.vgg19 = models.vgg19(pretrained=True).to(self.device)
-        self.model = nn.Sequential(*list(self.vgg19.children())[:-1])  # Remove classification head
+        # self.model = nn.Sequential(*list(self.vgg19.children())[:-1])  # Remove classification head
         self.model.eval()
         # Define image transformations
         self.transform = transforms.Compose([

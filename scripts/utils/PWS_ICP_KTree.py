@@ -3,8 +3,7 @@ import open3d as o3d
 from scipy.spatial import ConvexHull
 
 # ----------------------- Utility Functions -----------------------
-
-def scale_point_cloud(point_cloud, scale_factor=1000.0):
+def scale_point_cloud(point_cloud, scale_factor= 1000):
     """
     Scales the given Open3D point cloud by the specified factor.
     Default: Converts mm to meters by dividing by 1000.
@@ -15,9 +14,9 @@ def scale_point_cloud(point_cloud, scale_factor=1000.0):
 def preprocess_point_cloud(pcd, voxel_size):
     """ Downsample and estimate normals for feature extraction. """
     pcd_down = pcd.voxel_down_sample(voxel_size)
-    pcd_down.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=voxel_size * 2, max_nn=100))
+    pcd_down.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=10))
     pcd_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
-        pcd_down, o3d.geometry.KDTreeSearchParamHybrid(radius=voxel_size * 5, max_nn=50)
+        pcd_down, o3d.geometry.KDTreeSearchParamHybrid(radius=0.02, max_nn=50)
     )
     return pcd_down, pcd_fpfh
 def pairwise_feature_matching(source_fpfh, target_fpfh):
@@ -31,7 +30,7 @@ def pairwise_feature_matching(source_fpfh, target_fpfh):
     distances, indices = target_tree.query(source_features, k=1)  # Nearest neighbor
 
     # Convert to Open3D CorrespondenceSet
-    correspondences = np.vstack((np.arange(len(indices)), indices)).T
+    correspondences = np.vstack((np.arange(len(indices)), indices.flatten())).T
     return correspondences
 def execute_ransac(source_down, target_down, correspondences, voxel_size):
     """Perform transformation estimation using RANSAC on pairwise correspondences."""
@@ -97,19 +96,15 @@ def remove_outliers(pcd, nb_neighbors=10, std_ratio=2.0, nb_points=5, radius=0.0
 if __name__ == "__main__":
     try:
         # Load Point Clouds
-        source = o3d.io.read_point_cloud(R"/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/source/d435_on_ur10e_arm/source_ob1_0.ply")
-        target = o3d.io.read_point_cloud(R"/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/ply_models/obj1.ply")
-        
+        source = o3d.io.read_point_cloud("/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/source/d435_on_ur10e_arm/source_ob1_0.ply")
+        target = o3d.io.read_point_cloud('/home/airlab/Desktop/DigitalTwin_PoseEstimation/scripts/partial_point_clouds/view2.ply')
+        init_target = o3d.io.read_point_cloud('/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/ply_models/obj1.ply')
         # Scale to meters
-        source = scale_point_cloud(source)
-        # target = scale_point_cloud(target)
-        # o3d.visualization.draw_geometries([source])
-        # Plane segmentation (optional)
-        # _, outlier_source = seg_plane(source)
         outlier_source = source
         # Remove noise and outliers
         # outlier_source = remove_outliers(outlier_source)
-        outlier_target = remove_outliers(target)
+        # outlier_target = remove_outliers(target)
+        outlier_target = target
         o3d.visualization.draw_geometries([outlier_source, outlier_target])
 
         # # Downsample for efficiency
@@ -117,7 +112,7 @@ if __name__ == "__main__":
         voxel_size_target = 0.005
         source_down, source_fpfh = preprocess_point_cloud(outlier_source, voxel_size_source)
         target_down, target_fpfh = preprocess_point_cloud(outlier_target, voxel_size_target)
-        print("SOurce data", np.asarray(source_down.points))
+        o3d.visualization.draw_geometries([source_down, target_down])
         # Pairwise feature matching
         correspondences = pairwise_feature_matching(source_fpfh, target_fpfh)
         voxel_size = 0.0025
@@ -129,6 +124,7 @@ if __name__ == "__main__":
 
         # Visualize final alignment
         o3d.visualization.draw_geometries([outlier_source.transform(icp_result.transformation), outlier_target])
+        o3d.visualization.draw_geometries([outlier_source, init_target])
         print("Transformation matrix:", icp_result.transformation)
         
 

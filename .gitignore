@@ -1,4 +1,5 @@
-*checkpoints/*.pth
+*scripts/depth_anything_v2/checkpoints/*.pth
 *.pt 
 *.ply
-*scripts/pretrain/*.pt
+*scripts/ultralytics/pretrain/*.pt
+*data/partial_point_clouds/obj1/*.ply

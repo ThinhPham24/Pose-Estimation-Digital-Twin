@@ -4,7 +4,7 @@
 - Use the ICP algorithm (different methods) to estimate the pose of the object.
 # There is flowchart.
 <center>
-<img src='Assets/Picture.gif'>
+<img src='Assets/Algorithm.gif'>
 </center>
 
 # Refs
@@ -34,3 +34,24 @@ pip install -r requirements.txt
 <center>
 <img src='Assets/result_03_19.gif'>
 </center>
+
+# 2025-03-28: 
+## Some works did
+1. Add main code: vision_ros.py
+
+2. Modify the Depth estimation - This function need to improve or change the other models to get high accuracy of depth
+
+3. Adjust the PWS ICP KTree function - This algorithm can replace by  PPF-ICP. But PPF-ICP have some error and poor speed
+
+## Need to do in the next stage:
+
+1. Evaluate the accuracy of Seeing Anything combined with our proposal - Use cosine similarity to enhance the accuracy
+
+2. Continue to develop the next step
+
+3. Evaluate the pose of our proposal get the results for paper
+
+4. Do the experiments
+
+
+
