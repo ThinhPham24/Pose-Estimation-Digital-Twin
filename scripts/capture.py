@@ -3,70 +3,85 @@ import numpy as np
 import cv2
 import torch
 import open3d as o3d
-from depth_anything_v2.dpt import DepthAnythingV2
-from d435_capture import *
+# from depth_anything_v2.dpt import DepthAnythingV2
+# from d435_capture import *
 from global_registration import *
 from PIL import Image
-if __name__ == "__main__":
 
-    # # Initialize RealSense
-    # pipeline, alignment = initialize(rs)
+import pyrealsense2 as rs
+import numpy as np
+import cv2
 
-    # while True:
-    #     color_frame, depth_frame, depth_intrinsics = capture_frame(pipeline, alignment)
+import pyrealsense2 as rs
+import numpy as np
+import cv2
+import open3d as o3d
 
-    #     if color_frame is None or depth_frame is None:
-    #         print("Warning: No frames captured")
-    #         continue
+# Stereo Matching Parameters
+window_size = 5
+min_disp = 0
+num_disp = 96  # Must be divisible by 16
 
-    #     color_image = np.asanyarray(color_frame.get_data())
-    #     depth_image = np.asanyarray(depth_frame.get_data())
-    #     h, w = color_image.shape[:2]
-    #     cv2.imshow("color", color_image)
-    #     k = cv2.waitKey(0)
-    #     if k == ord('s'):
-    #         cv2.imwrite("Obj1.png", color_image)
+stereo = cv2.StereoSGBM_create(
+    minDisparity=min_disp,
+    numDisparities=num_disp,
+    blockSize= 25,
+    P1=8 * 3 * window_size**2,
+    P2=32 * 3 * window_size**2,
+    disp12MaxDiff=1,
+    uniquenessRatio=12,
+    speckleWindowSize=100,
+    speckleRange= 32 
+)
 
-    # Configure RealSense pipeline
-    pipeline = rs.pipeline()
-    config = rs.config()
+# Configure RealSense pipeline
+pipeline = rs.pipeline()
+config = rs.config()
 
-    # Enable infrared streams (IR left = 1, IR right = 2)
-    config.enable_stream(rs.stream.infrared, 1, 640, 480, rs.format.y8, 30)  # IR Left
-    config.enable_stream(rs.stream.infrared, 2, 640, 480, rs.format.y8, 30)  # IR Right
+# Enable IR stereo streams and color stream
+config.enable_stream(rs.stream.infrared, 1, 640, 480, rs.format.y8, 30)  # IR Left
+config.enable_stream(rs.stream.infrared, 2, 640, 480, rs.format.y8, 30)  # IR Right
+config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)  # Color stream
 
-    # Start pipeline
-    pipeline.start(config)
+# Start streaming
+pipeline.start(config)
 
-    try:
-        while True:
-            # Wait for frames
-            frames = pipeline.wait_for_frames()
-            
-            # Get infrared images
-            ir_left = frames.get_infrared_frame(1)   # IR Left (Index 1)
-            ir_right = frames.get_infrared_frame(2)  # IR Right (Index 2)
+# Camera intrinsic parameters (RealSense D435 Example)
+try:
+    while True:
+        # Capture frames
+        frames = pipeline.wait_for_frames()
+        ir_left = frames.get_infrared_frame(1)
+        ir_right = frames.get_infrared_frame(2)
+        color_frame = frames.get_color_frame()
+     
 
-            if not ir_left or not ir_right:
-                continue
 
-            # Convert frames to numpy arrays
-            ir_left_img = np.asanyarray(ir_left.get_data())
-            ir_right_img = np.asanyarray(ir_right.get_data())
+        if not ir_left or not ir_right or not color_frame:
+            continue
 
-            # Display images
-            cv2.imshow('IR Left', ir_left_img)
-            cv2.imshow('IR Right', ir_right_img)
+        # Convert frames to numpy arrays
+        ir_left_img = np.asanyarray(ir_left.get_data())
+        ir_right_img = np.asanyarray(ir_right.get_data())
+        color_image = np.asanyarray(color_frame.get_data())
 
-            # Save images (Optional)
-            cv2.imwrite('ir_left.png', ir_left_img)
-            cv2.imwrite('ir_right.png', ir_right_img)
+        # Compute disparity map
+        disparity = stereo.compute(ir_left_img, ir_right_img).astype(np.float32) / 16.0
 
-            # Press 'q' to exit
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+        # Normalize disparity for visualization
+        disp_vis = cv2.normalize(disparity, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
+        color_disparity = cv2.applyColorMap(disp_vis, cv2.COLORMAP_JET)
 
-    finally:
-        # Stop the pipeline
-        pipeline.stop()
-        cv2.destroyAllWindows()
+        # Show images
+        cv2.imshow('IR Left', ir_left_img)
+        cv2.imshow('IR Right', ir_right_img)
+        cv2.imshow("Disparity Map", color_disparity)
+
+        # Exit on 'q' key press
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+finally:
+    pipeline.stop()
+    cv2.destroyAllWindows()
+

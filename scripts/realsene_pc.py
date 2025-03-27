@@ -132,6 +132,7 @@ try:
 
         # Pointcloud data to arrays
         v, t = points.get_vertices(), points.get_texture_coordinates()
+        n = points.get_normals()
         verts = np.asanyarray(v).view(np.float32).reshape(-1, 3)  # xyz
         # texcoords = np.asanyarray(t).view(np.float32).reshape(-1, 2)  # uv
         colors = np.array(color_image).reshape(-1, 3) / 255.0
