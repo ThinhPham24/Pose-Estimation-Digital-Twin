@@ -7,6 +7,22 @@ import cv2
 import os 
 import numpy as np
 import open3d as o3d
+from utils.draw_bbox import draw_detections
+from PIL import Image
+import trimesh
+def visualize(rgb, pred_rot, pred_trans, model_points, K, save_path):
+    img = draw_detections(rgb, pred_rot, pred_trans, model_points, K, color=(255, 0, 0))
+    img = Image.fromarray(np.uint8(img))
+    img.save(save_path)
+    prediction = Image.open(save_path)
+    
+    # concat side by side in PIL
+    rgb = Image.fromarray(np.uint8(rgb))
+    img = np.array(img)
+    concat = Image.new('RGB', (img.shape[1] + prediction.size[0], img.shape[0]))
+    concat.paste(rgb, (0, 0))
+    concat.paste(prediction, (img.shape[1], 0))
+    return concat
 if __name__ == "__main__":
     '''
     1. Capture image from Realsene
@@ -29,7 +45,9 @@ if __name__ == "__main__":
 
     '''
 
-    image = cv2.imread("/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/images/Test.png")
+    image = cv2.imread("/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/images/Test3.png")
+    output_dir = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/'
+    re_image = cv2.resize(image, (640,480), cv2.INTER_AREA)
     object_infs = generator_pc.depth_estimation(image)
     if object_infs is None:
         print("No object detections")
@@ -73,7 +91,18 @@ if __name__ == "__main__":
                     transformation = registrator.register_point_clouds()
                     if transformation is not None:
                         print("Transformation matrix:", transformation)
+                        print("Translate", transformation[:3,3])
+                        print("Rotation", transformation[:3,:3])
                         registrator.visualize_registration(transformation)
+                 
+                    K = np.array([[470.4,0,320], [0,470.4,320], [0,0,1]]).reshape(3, 3)
+                    print("K", K)
+                    print("=> visualizating ...")
+                    save_path = os.path.join(f"{output_dir}/Pose_results", 'vis_pem.png')
+                    mesh = trimesh.load_mesh(init_target_path)
+                    model_points = mesh.sample(1024).astype(np.float32)
+                    vis_img = visualize(re_image, transformation[:3,:3], transformation[:3,3], model_points/2, K, save_path)
+                    vis_img.save(save_path)
                     # Refine the transformation matrix to real scenario
                     # Convert to realsencamera
                     # Convert camera coordinate to robot coordinate

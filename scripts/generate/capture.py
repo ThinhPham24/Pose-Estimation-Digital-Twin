@@ -83,11 +83,11 @@ class CADViewGenerator:
             output_path = os.path.join(self.output_dir, f"{view['title']}.ply")
             o3d.io.write_point_cloud(output_path, pcd, write_ascii=True)
 
-            visible_point_cloud = vedo.Points(visible_points, c="gold")
-            plt.at(i).show(visible_point_cloud, viewup=cam["viewup"], azimuth=azimuth, elevation=elevation, title=view["title"])
+            # visible_point_cloud = vedo.Points(visible_points, c="gold")
+            # plt.at(i).show(visible_point_cloud, viewup=cam["viewup"], azimuth=azimuth, elevation=elevation, title=view["title"])
 
-        plt.close()
-        plt.interactive().close()
+        # plt.close()
+        # plt.interactive().close()
 
 # if __name__ == "__main__":
 #     cad_model_path = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/ply_models/obj1.ply'

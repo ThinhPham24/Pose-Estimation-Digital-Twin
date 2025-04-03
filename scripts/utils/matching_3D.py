@@ -28,7 +28,7 @@ class PointCloudRegistrator:
 
     def scale_point_cloud(self, point_cloud, scale_factor=1000):
         """Scales the given Open3D point cloud."""
-        point_cloud.points = o3d.utility.Vector3dVector(np.asarray(point_cloud.points) / scale_factor)
+        point_cloud.points = o3d.utility.Vector3dVector(np.asarray(point_cloud.points)/scale_factor)
         return point_cloud
 
     def preprocess_point_cloud(self, pcd, voxel_size):

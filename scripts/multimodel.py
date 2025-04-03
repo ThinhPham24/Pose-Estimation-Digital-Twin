@@ -26,10 +26,11 @@ class ObjectPointCloudGenerator:
         depth_any_thing.load_state_dict(torch.load(model_path, map_location=self.device))
         return depth_any_thing.to(self.device).eval()
 
-    def _load_yoloe(self, model_path, source_image = 'ultralytics/assets/color2.png', class_name = ["cude"]):
+    def _load_yoloe(self, model_path, source_image = 'ultralytics/assets/Test3.png', class_name = ["cude"]):
         see_any_thing = YOLOE(model_path).to(self.device)
         visuals = dict(
-            bboxes=np.array([[298.2, 190.1, 375.2, 240.1]]),
+            # bboxes=np.array([[298.2, 190.1, 375.2, 240.1]]),
+            bboxes=np.array([[178.2, 218.1, 365.2, 372.1]]),
             cls=np.array([0])
         )
         image_size = 640
@@ -105,9 +106,10 @@ class ObjectPointCloudGenerator:
     def generate_point_cloud(self, final_depth, image_color):
         cx, cy = 320, 320
         fx, fy = 470.4, 470.4
+        # fx, fy = 617.17, 615.04
         x, y = np.meshgrid(np.arange(640), np.arange(640))
-        x = ((x - cx) / fx) * 1.4
-        y = ((y - cy) / fy) * 1.4
+        x = ((x - cx) / fx)*1.4 
+        y = ((y - cy) / fy)*1.4
         z = final_depth / 100
         points = np.stack((np.multiply(x, z), np.multiply(y, z), z), axis=-1).reshape(-1, 3)
         colors = np.array(image_color).reshape(-1, 3) / 255.0
@@ -136,6 +138,10 @@ class ObjectPointCloudGenerator:
         disparity = resized_pred_depth.astype(np.float32) / 16
         disparity[disparity == 0] = 1e-6
         r = self.see_any_thing.predict(resize_image_color, save=False)[0].to(self.device)
+        seg_ob = Results(orig_img=r.orig_img,path=r.path,names= r.names,boxes=r.boxes.data, masks=r.masks.data).plot()
+        # cv2.imshow("Result", seg_ob)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
         results = self.apply_nms(r)
         pred_inf =[]
         if results.masks is not None:
