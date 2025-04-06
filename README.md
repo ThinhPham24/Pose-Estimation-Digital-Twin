@@ -19,11 +19,6 @@ pip install -r requirements.txt
 <img src='Assets/demo.gif'>
 </center>
 
-<center>
-<img src='Pose_results/result.gif'>
-</center>
-
-
 # Refs
 
 1. [Deep Learning-Based Object Pose Estimation: A Comprehensive Survey](https://github.com/CNJianLiu/Awesome-Object-Pose-Estimation)
