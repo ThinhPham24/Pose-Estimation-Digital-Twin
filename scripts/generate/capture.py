@@ -71,7 +71,7 @@ class CADViewGenerator:
 
             visible_points = []
             for point in self.mesh.points:
-                vector_to_point = point - self.mesh.center_of_mass() + 0.005
+                vector_to_point = point - self.mesh.center_of_mass() + 0.02
                 if np.dot(vector_to_point, camera_direction) >= 0:
                     visible_points.append(point)
 

@@ -135,14 +135,15 @@ class FeatureFusionBlock(nn.Module):
         output = self.resConfUnit2(output)
 
         if (size is None) and (self.size is None):
-            modifier = {"scale_factor": 2}
+            modifier = None #{"scale_factor": 2}
         elif size is None:
             modifier = {"size": self.size}
         else:
             modifier = {"size": size}
 
-        output = nn.functional.interpolate(output, **modifier, mode="bilinear", align_corners=self.align_corners)
-        
+        if modifier:
+            output = nn.functional.interpolate(output, **modifier, mode="bilinear", align_corners=self.align_corners)
+
         output = self.out_conv(output)
 
         return output

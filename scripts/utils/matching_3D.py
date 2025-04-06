@@ -68,7 +68,7 @@ class PointCloudRegistrator:
         max_correspondence_distance = self.voxel_size * 0.4
         result_icp = o3d.pipelines.registration.registration_icp(
             source, target, max_correspondence_distance, initial_transform,
-            o3d.pipelines.registration.TransformationEstimationPointToPoint(),
+            o3d.pipelines.registration.TransformationEstimationPointToPlane(),
             o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=1000)
         )
         return result_icp
@@ -83,8 +83,8 @@ class PointCloudRegistrator:
     def register_point_clouds(self):
         if not self.load_point_clouds():
             return None
-
-        outlier_source = self.remove_outliers(self.source)
+        scaled_source = self.scale_point_cloud(self.source)
+        outlier_source = self.remove_outliers(scaled_source)
         outlier_target = self.remove_outliers(self.target)
 
         source_down, source_fpfh = self.preprocess_point_cloud(outlier_source, self.voxel_size_source)
@@ -96,11 +96,10 @@ class PointCloudRegistrator:
 
         return icp_result.transformation
 
-    def visualize_registration(self, transformation):
-        source_temp = self.source.transform(transformation)
+    def visualize_transform(self, source, transformation):
+        source_temp = source.transform(transformation)
         source_temp.paint_uniform_color([1, 0, 0])
-        self.target.paint_uniform_color([0, 1, 0])
-
+        self.target.paint_uniform_color([0, 1, 1])
         if self.init_target is not None:
             o3d.visualization.draw_geometries([source_temp, self.target, self.init_target])
         else:

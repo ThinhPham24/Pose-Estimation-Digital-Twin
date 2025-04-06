@@ -3,3 +3,10 @@
 *.ply
 *scripts/ultralytics/pretrain/*.pt
 *data/partial_point_clouds/obj1/*.ply
+*scripts_v1/ultralytics/pretrain/*.pt
+*scripts/checkpoints/*.pth
+*scripts/Stereo_images/*.ply
+*scripts/Calibrated/*.txt
+
+*.pth
+*.pth
