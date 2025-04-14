@@ -1,8 +1,8 @@
 
 import pyrealsense2 as rs
 import cv2
-# import sys
-# sys.path.append('core')
+import sys
+sys.path.append('/home/airlab/Desktop/DigitalTwin_PoseEstimation/scripts')
 
 import argparse
 import glob
@@ -24,7 +24,12 @@ from PIL import Image
 import trimesh
 import os
 from utils.draw_bbox import draw_detections, draw_3d_bbox_on_point_cloud
-
+import time
+from utils.pointcloud import*
+from utils.cvfunc import*
+from utils.utils import*
+import torch
+import torch.nn.functional as F
 
 def _load_yoloe(model_path, source_image='ultralytics/assets/Test3.png', class_name=["cude"]):
     device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
@@ -183,10 +188,10 @@ def _mask_processing(mask):
     contours,_ = cv2.findContours(m,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     mCnt = max(contours, key = cv2.contourArea)
     _mask = cv2.drawContours(binary_image, [mCnt], -1, 255, cv2.FILLED)
-    kernel = np.ones((3, 3), np.uint8) 
-    post_mask = cv2.erode(_mask, kernel, iterations=1) 
-    post_mask = cv2.dilate(_mask, kernel, iterations=1) 
-    return post_mask
+    kernel = np.ones((3, 3), np.uint8)
+    post_mask = cv2.erode(_mask, kernel, iterations=1)   
+    post_mask = cv2.dilate(_mask, kernel, iterations=1)
+    return post_mask 
 
 
 def visualize(rgb, pred_rots, pred_trans, model_points, K, save_path):
@@ -199,9 +204,7 @@ def visualize(rgb, pred_rots, pred_trans, model_points, K, save_path):
     # concat = Image.new('RGB', (img.shape[1] + prediction.size[0], img.shape[0]))
     # concat.paste(rgb, (0, 0))
     # concat.paste(prediction, (img.shape[1], 0))
-    # return concat
-
-
+    # return concate
 
 def visualize_point_cloud(points, colors):
     pcd = o3d.geometry.PointCloud()
@@ -209,8 +212,6 @@ def visualize_point_cloud(points, colors):
     pcd.colors = o3d.utility.Vector3dVector(colors)
     o3d.visualization.draw_geometries([pcd])
     return pcd
-
-
 
 def undistortRectify(frame, map_calib, left_true = True):
     cv_file = cv2.FileStorage()
@@ -244,13 +245,8 @@ def reconstruct_2d_to_3d(ImL, mask_img, disparity, Q1_file):
     cv_file = cv2.FileStorage(Q1_file, cv2.FILE_STORAGE_READ)
     Q1_map = cv_file.getNode('q').mat()
     cv_file.release()
-
     # Prepare disparity
-    # disparity = disparity.astype(np.float32) / 16.0
-    # disp = np.round(disp * 256).astype(np.uint16)
-    print("disparity", disparity)
     h, w = disparity.shape
-
     # Prepare Q matrix (if needed, otherwise use Q1_map directly)
     Q = np.float32([
         [1, 0, 0, -w / 2.0],
@@ -258,42 +254,71 @@ def reconstruct_2d_to_3d(ImL, mask_img, disparity, Q1_file):
         [0, 0, 0, Q1_map[2, 3]],
         [0, 0, -Q1_map[3, 2], Q1_map[3, 3]]
     ])
-
     # Mask for valid disparity and input mask
     valid_disp_mask = disparity > 0
-
     if mask_img.dtype != bool:
         mask_img = mask_img > 0  # Ensure it's binary
 
     combined_mask = np.logical_and(valid_disp_mask, mask_img)
-
     # Reproject image to 3D
-    points_3D = cv2.reprojectImageTo3D(disparity, Q)  # or Q
-    # print("points_3D", points_3D.shape)
-    # # points_3D = points_3D.reshape(-1, 3)
-    # print("points_3D", points_3D.shape)
-    # print("points_3D", points_3D)  # Should be (height, width, 3)
-    # Step 1: Flatten and filter valid points
-    # mask = (points_3D[..., 2] < 10000) & (points_3D[..., 2] > 0)
-    # valid_points = points_3D[mask]
-
-    # # Step 2: Convert to float64 and reshape
-    # valid_points = valid_points.astype(np.float64).reshape(-1, 3)
-    # Get RGB colors from left image
+    
+    points_3D = cv2.reprojectImageTo3D(disparity, Q1_map)  # or Q
     colors = cv2.cvtColor(ImL, cv2.COLOR_BGR2RGB)
     colors = colors/255
     # out_colors = np.asarray(colors)
-
     # # Apply combined mask
     out_points = points_3D[combined_mask].reshape(-1, 3)
-    print("points_3D", out_points)
+    # print("points_3D", out_points)
     out_colors = colors[combined_mask].reshape(-1, 3)
-    # mask = disparity > disparity.min() + 0.15
-    # out_points = points_3D[mask]
-    # out_points = out_points.reshape(-1, 3)
-    # out_colors = colors[mask].reshape(-1, 3)
-
-    return out_points , out_colors
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(out_points)
+    pcd.colors = o3d.utility.Vector3dVector(out_colors)
+    # === 6. Remove outliers (recommended for DEFOMStereo) ===
+    # Option A: Statistical filtering
+    pcd, _ = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=1.5)
+    return pcd.points , out_colors
+def _calculate_full_pc(ImL, disparity, Q1_file):
+     # Load Q matrix
+    cv_file = cv2.FileStorage(Q1_file, cv2.FILE_STORAGE_READ)
+    Q1_map = cv_file.getNode('q').mat()
+    cv_file.release()
+    h, w = disparity.shape
+    # Prepare Q matrix (if needed, otherwise use Q1_map directly)
+    Q = np.float32([
+        [1, 0, 0, -w / 2.0],
+        [0, -1, 0, h / 2.0],
+        [0, 0, 0, Q1_map[2, 3]],
+        [0, 0, -Q1_map[3, 2], Q1_map[3, 3]]
+    ])
+    # === 2. Mask out invalid disparities ===
+    min_disp = 0
+    max_disp = 256
+    valid_mask = (disparity > min_disp) & (disparity < max_disp)
+    # Reproject image to 3D
+    points_3D = cv2.reprojectImageTo3D(disparity, Q)  # or Q
+    # # Step 2: Convert to float64 and reshape
+    # Get RGB colors from left image
+    if len(ImL.shape) == 2:
+        colors = cv2.cvtColor(ImL, cv2.COLOR_GRAY2RGB)
+    else:
+        colors = cv2.cvtColor(ImL, cv2.COLOR_BGR2RGB)
+    colors = colors/255
+    # # # Apply combined mask
+    out_points = points_3D[valid_mask].reshape(-1, 3)
+    print("points_3D", disparity.min())
+    out_colors = colors[valid_mask].reshape(-1, 3)
+    mask = disparity > 25  #disparity.min() 
+    out_points = points_3D[mask]
+    out_points = out_points.reshape(-1, 3)
+    out_colors = colors[mask].reshape(-1, 3)
+    # === 5. Create Open3D point cloud ===
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(out_points)
+    pcd.colors = o3d.utility.Vector3dVector(out_colors)
+    # === 6. Remove outliers (recommended for DEFOMStereo) ===
+    # Option A: Statistical filtering
+    pcd, _ = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=1.5)
+    return pcd.points , pcd.colors
 def calculate_2d_depth(image_L, baseline = 50, fx= 382.3565, fy =  382.9777, cx1 = 323.724, cy = 238.944, cx2 = 323.3898):
      # Calibration
     # fx, fy, cx1, cy = 615.75, 616.02, 329.27, 244.46
@@ -313,9 +338,62 @@ def calculate_2d_depth(image_L, baseline = 50, fx= 382.3565, fy =  382.9777, cx1
     points = points_grid.transpose(1,2,0)[mask]
     colors = image_L[mask].astype(np.float64) / 255
     return points, colors
+def get_aabb_dimensions(pcd):
+    aabb = pcd.get_axis_aligned_bounding_box()
+    extent = aabb.get_extent()  # Returns [width, height, length] along x, y, z
+    return extent  # Or: extent[0]=width, extent[1]=height, extent[2]=length
+def get_obb_dimensions(pcd):
+    obb = pcd.get_oriented_bounding_box()
+    extent = obb.extent  # Returns [width, height, length] along principal axes
+    return extent
+def get_tight_obb_with_pca(pcd):
+    # Convert Open3D point cloud to numpy array
+    points = np.asarray(pcd.points)
+
+    # Compute mean-centered coordinates
+    mean = np.mean(points, axis=0)
+    centered = points - mean
+
+    # Compute PCA
+    cov = np.cov(centered.T)
+    eigvals, eigvecs = np.linalg.eigh(cov)
+    
+    # Sort eigenvectors by eigenvalues (descending)
+    order = np.argsort(eigvals)[::-1]
+    eigvecs = eigvecs[:, order]
+
+    # Rotate point cloud into PCA-aligned space
+    R = eigvecs
+    rotated_points = centered @ R
+
+    # Get AABB in rotated space
+    min_bound = np.min(rotated_points, axis=0)
+    max_bound = np.max(rotated_points, axis=0)
+    extent = max_bound - min_bound
+
+    # Compute center of the box in rotated space
+    center_rotated = (max_bound + min_bound) / 2.0
+
+    # Transform center back to original space
+    obb_center = (R @ center_rotated) + mean
+
+    # Create OBB using Open3D
+    obb = o3d.geometry.OrientedBoundingBox(center=obb_center, R=R, extent=extent)
+    return obb
+def _to_torch(image, size = (1000, 750)):
+    if isinstance(image, np.ndarray):
+         # Convert BGR to RGB and resize
+        img_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        img_np = cv2.resize(img_np, size, cv2.INTER_AREA)  # size=(width, height)
+        # Convert to tensor
+        img = torch.from_numpy(img_np).permute(2, 0, 1).float()  # Normalize to [0,1]
+        return img.unsqueeze(0).to(DEVICE)  # Add batch dimension
+    else:
+        # If it's already a tensor (B, C, H, W), resize using interpolate
+        return F.interpolate(image, size=(size[1], size[0]), mode='bilinear', align_corners=False)
 # Init setup model
 parser = argparse.ArgumentParser()
-parser.add_argument('--restore_ckpt',type=str, default="/home/airlab/Desktop/DEFOM_Stereo/checkpoints/defomstereo_vitl_sceneflow.pth", help="restore checkpoint")
+parser.add_argument('--restore_ckpt',type=str, default="/home/airlab/Desktop/DigitalTwin_PoseEstimation/scripts/checkpoints/defomstereo_vitl_sceneflow.pth", help="restore checkpoint")
 parser.add_argument('--save_numpy', action='store_true', help='save output as numpy arrays')
 parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')
 parser.add_argument('--valid_iters', type=int, default=32, help='number of flow-field updates during forward pass')
@@ -350,10 +428,11 @@ if __name__ =="__main__":
 
     model.to(DEVICE)
     model.eval()
-    left_imgs = '/home/airlab/Desktop/DEFOM_Stereo/Stereo_images/*_left.png'
-    right_imgs = '/home/airlab/Desktop/DEFOM_Stereo/Stereo_images/*_right.png'
-    output_directory = '/home/airlab/Desktop/DEFOM_Stereo/Stereo_images'
-    map_clalibrate = '/home/airlab/Desktop/DEFOM_Stereo/Calibrated/degree120/stereoMap.txt'
+    left_imgs = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/scripts/Stereo_images/*_left.png'
+    right_imgs = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/scripts/Stereo_images/*_right.png'
+    output_directory = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/scripts/Stereo_images/'
+    map_clalibrate = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/scripts/Calibrated/stereoMap.txt'
+    stereoMap, Q = loadStereoMaps('/home/airlab/Desktop/DigitalTwin_PoseEstimation/scripts/Calibrated/' ,f'stereoMap.txt')
     output_directory = Path(output_directory)
     output_directory.mkdir(exist_ok=True)
 
@@ -361,87 +440,89 @@ if __name__ =="__main__":
         left_images = sorted(glob.glob(left_imgs, recursive=True))
         right_images = sorted(glob.glob(right_imgs, recursive=True))
         print(f"Found {len(left_images)} images. Saving files to {output_directory}/")
-
         for (imfile1, imfile2) in tqdm(list(zip(left_images, right_images))):
-            image1 = load_image(imfile1, map_clalibrate, True)
-            image2 = load_image(imfile2, map_clalibrate, False)
-
-            padder = InputPadder(image1.shape, divis_by=32)
-            image1, image2 = padder.pad(image1, image2)
-
+            imgL = cv2.imread(imfile1)
+            imgR = cv2.imread(imfile2)
+            h, w = imgL.shape[:2]
+            size_img = (w,h)
+            # print("SIze", size_img)
+            start = time.time()
+            imgL, imgR = mapImageLR(imgL, imgR, stereoMap)
+            imgL_tensor = _to_torch(imgL, size_img) 
+            imgR_tensor = _to_torch(imgR, size_img) 
+            padder = InputPadder(imgL_tensor.shape, divis_by= 32)
+            image1, image2 = padder.pad(imgL_tensor, imgR_tensor)
             with torch.no_grad():
                 disp_pr = model(image1, image2, iters=args.valid_iters, scale_iters=args.scale_iters, test_mode=True)
             disp_pr = padder.unpad(disp_pr).cpu().squeeze().numpy()
-            # print("Disparity", disp_pr)
+            #==================================
+            #************Full scene*******************
+            points, colors = _calculate_full_pc(imgL, disp_pr, map_clalibrate)
+            pcd = visualize_point_cloud(points, colors)
+            file_stem = imfile1.split('/')[-1].split('_')[0]+'_'+args.restore_ckpt.split('/')[-1][:-4]
+            # if args.save_numpy:
+            o3d.io.write_point_cloud(output_directory / f"Scene.ply", pcd, write_ascii=True)
+            #===================================
             #--------------YOLOE-------------
-            
-            color_image = cv2.imread(imfile1)
-            color_image = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
-            re_image = cv2.resize(color_image, (640,640), cv2.INTER_NEAREST)
-            see_any_thing = _load_yoloe("ultralytics/pretrain/yoloe-v8l-seg.pt")
-            r = see_any_thing.predict(re_image, save=False)[0].to(device)
-            # target_path = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/partial_point_clouds/obj1/back_view.ply'
-            target_path = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/ply_models/obj1.ply'
-            init_target_path = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/ply_models/obj1.ply'
-            rotations  = []
-            translations = []
-            if r.masks is not None and r.masks.data.numel() > 0: # Check if masks exist
-                seg_ob = Results(orig_img=r.orig_img, path=r.path, names=r.names, boxes=r.boxes.data, masks=r.masks.data).plot()
-                # cv2.imshow("Result", seg_ob)
-                # cv2.waitKey(0)
-                # cv2.destroyAllWindows()
-                results = apply_nms(r)
-                pred_boxes = results.boxes.xyxy.cpu().numpy()
-                clasess = results.boxes.data.cpu().numpy()
-                pred_masks = results.masks.data.cpu().numpy()
-                i = 0
-                for _mask, box, cls_name in zip(pred_masks, pred_boxes[:, :4], clasess[:, 5]):
-                    # _mask = (_mask * 255).astype(np.uint8)
-                    _mask = cv2.resize(_mask, (640, 480), interpolation=cv2.INTER_NEAREST)
-                    post_mask = _mask_processing(_mask)
-                   
+            # color_image = cv2.cvtColor(imgL, cv2.COLOR_RGB2BGR)
+            # re_image = cv2.resize(color_image, (640,640), cv2.INTER_NEAREST)
+            # see_any_thing = _load_yoloe("ultralytics/pretrain/yoloe-v8l-seg.pt")
+            # r = see_any_thing.predict(re_image, save=False)[0].to(device)
+            # # target_path = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/partial_point_clouds/obj1/back_view.ply'
+            # target_path = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/ply_models/obj1.ply'
+            # init_target_path = '/home/airlab/Desktop/DigitalTwin_PoseEstimation/data/ply_models/obj1.ply'
+            # rotations  = []
+            # translations = []
+            # if r.masks is not None and r.masks.data.numel() > 0: # Check if masks exist
+            #     seg_ob = Results(orig_img=r.orig_img, path=r.path, names=r.names, boxes=r.boxes.data, masks=r.masks.data).plot()
+            #     # cv2.imshow("Result", seg_ob)
+            #     # cv2.waitKey(0)
+            #     # cv2.destroyAllWindows()
+            #     results = apply_nms(r)
+            #     pred_boxes = results.boxes.xyxy.cpu().numpy()
+            #     clasess = results.boxes.data.cpu().numpy()
+            #     pred_masks = results.masks.data.cpu().numpy()
+            #     i = 0
+            #     for _mask, box, cls_name in zip(pred_masks, pred_boxes[:, :4], clasess[:, 5]):
+            #         # _mask = (_mask * 255).astype(np.uint8)
+            #         _mask = cv2.resize(_mask, (640, 480), interpolation=cv2.INTER_NEAREST)
+            #         post_mask = _mask_processing(_mask)
+                  
+            #         #=========================================
+            #         points, colors = reconstruct_2d_to_3d(imgL, post_mask, disp_pr, map_clalibrate)
+                    # ================================
                     # pcd = visualize_point_cloud(points, colors)
+                    # # Visualize
+                    # # Get accurate size with OBB
+                    # obb = get_tight_obb_with_pca(pcd)
+                    # obb.color = (1, 0, 0)
+                    # o3d.visualization.draw_geometries([pcd, obb])
+                    # print("OBB Extents (W, H, L):", obb.extent)
+                    # dimension = get_obb_dimensions(pcd)
+                    # print("Dimension", dimension)
                     # file_stem = imfile1.split('/')[-1].split('_')[0]+'_'+args.restore_ckpt.split('/')[-1][:-4]
                     # # if args.save_numpy:
-                    # o3d.io.write_point_cloud(output_directory / "scene.ply", pcd, write_ascii=True)
-                    # points = np.array(points)
-                    # choose = np.random.choice(np.arange(len(points)), 512)
-                    # pts_3d = points[choose]
-
-                    # # print("Points", pts_3d)
-                    # colors = np.array(colors)
-                    # pcd = compute_normal(points, colors)
-                    # filename1 = os.path.join(f"{output_dir}/Pose_results", f'object{cls_name+i}.ply')
-                    # o3d.io.write_point_cloud(filename1, pcd, write_ascii=True)
+                    # o3d.io.write_point_cloud(output_directory / f"Scene.ply", pcd, write_ascii=True)
+                  
+                    # registrator = PointCloudRegistrator(pcd, target_path, init_target_path)
                     
-                    # Project 2d to 3d
+                    # transformation = registrator.register_point_clouds()
+                    # registrator.visualize_transform(pcd, transformation)
                     
-                    image_L = cv2.imread(imfile1)
-                    points, colors = reconstruct_2d_to_3d(image_L, post_mask, disp_pr, map_clalibrate)
-                    pcd = visualize_point_cloud(points, colors)
-                    file_stem = imfile1.split('/')[-1].split('_')[0]+'_'+args.restore_ckpt.split('/')[-1][:-4]
-                    # if args.save_numpy:
-                    o3d.io.write_point_cloud(output_directory / "scene.ply", pcd, write_ascii=True)
-
-                    registrator = PointCloudRegistrator(pcd, target_path, init_target_path)
-                    
-                    transformation = registrator.register_point_clouds()
-                    registrator.visualize_transform(pcd, transformation)
-                    
-                    # source = o3d.io.read_point_cloud(filename)
-                    target  = o3d.io.read_point_cloud(target_path)
-                    # registrator.visualize_registration(source,target, transformation)
-                    # Convert target to scene - World coordinate to camera coordinate.
-                    inv_transformation = np.linalg.inv(transformation)
-                    rotations.append(inv_transformation[:3, :3])
-                    translations.append(inv_transformation[:3, 3])
-                    # mesh = trimesh.load_mesh(target_path)
-                    # model_points = mesh.sample(2048).astype(np.float32)
-                    # draw_3d_bbox_on_point_cloud(model_points,source, transformation)
-                    if transformation is not None:
-                        print("Transformation matrix:", transformation)
-                        print("Translate", transformation[:3, 3])
-                        print("Rotation", transformation[:3, :3])
+                    # # source = o3d.io.read_point_cloud(filename)
+                    # target  = o3d.io.read_point_cloud(target_path)
+                    # # registrator.visualize_registration(source,target, transformation)
+                    # # Convert target to scene - World coordinate to camera coordinate.
+                    # inv_transformation = np.linalg.inv(transformation)
+                    # rotations.append(inv_transformation[:3, :3])
+                    # translations.append(inv_transformation[:3, 3])
+                    # # mesh = trimesh.load_mesh(target_path)
+                    # # model_points = mesh.sample(2048).astype(np.float32)
+                    # # draw_3d_bbox_on_point_cloud(model_points,source, transformation)
+                    # if transformation is not None:
+                    #     print("Transformation matrix:", transformation)
+                    #     print("Translate", transformation[:3, 3])
+                    #     print("Rotation", transformation[:3, :3])
             # file_stem = imfile1.split('/')[-1].split('_')[0]+'_'+args.restore_ckpt.split('/')[-1][:-4]
             # if args.save_numpy:
             #     np.save(output_directory / f"{file_stem}.npy", disp_pr)

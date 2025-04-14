@@ -147,7 +147,163 @@ class stereo_realsense:
         self.pipeline.stop()
 
 
+# import pyrealsense2 as rs
+# import math
+# import cv2
+# import numpy as np
 
-        
+# def compute_fov(fx, width):
+#     """Calculate the FOV based on the focal length (fx) and image width."""
+#     return 2 * math.atan(width / (2 * fx)) * 180 / math.pi
 
-   
+# # Setup pipeline and config
+# pipeline = rs.pipeline()
+# config = rs.config()
+# config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+# config.enable_stream(rs.stream.infrared, 1, 640, 480, rs.format.y8, 30)  # Left IR stream
+# config.enable_stream(rs.stream.infrared, 2, 640, 480, rs.format.y8, 30)  # Right IR stream
+
+# pipeline.start(config)
+# profile = pipeline.get_active_profile()
+
+# # Get intrinsics for color and both IR streams
+# color_intr = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
+# left_ir_intr = profile.get_stream(rs.stream.infrared, 1).as_video_stream_profile().get_intrinsics()  # Left IR
+# right_ir_intr = profile.get_stream(rs.stream.infrared, 2).as_video_stream_profile().get_intrinsics()  # Right IR
+
+# # Calculate FOVs for color and both IR streams
+# rgb_fov_x = compute_fov(color_intr.fx, color_intr.width)
+# left_ir_fov_x = compute_fov(left_ir_intr.fx, left_ir_intr.width)
+# right_ir_fov_x = compute_fov(right_ir_intr.fx, right_ir_intr.width)
+
+# print(f"RGB FOV x: {rgb_fov_x:.2f}, Left IR FOV x: {left_ir_fov_x:.2f}, Right IR FOV x: {right_ir_fov_x:.2f}")
+
+# # Calculate scaling ratios between IR and RGB FOV
+# scale_left_ir = math.tan(math.radians(rgb_fov_x / 2)) / math.tan(math.radians(left_ir_fov_x / 2))
+# scale_right_ir = math.tan(math.radians(rgb_fov_x / 2)) / math.tan(math.radians(right_ir_fov_x / 2))
+
+# print(f"Scale Left IR image by: {scale_left_ir:.4f} to match RGB FOV")
+# print(f"Scale Right IR image by: {scale_right_ir:.4f} to match RGB FOV")
+
+# # Wait for a frame
+# frames = pipeline.wait_for_frames()
+# color_frame = frames.get_color_frame()
+# left_ir_frame = frames.get_infrared_frame(1)  # Left IR stream
+# right_ir_frame = frames.get_infrared_frame(2)  # Right IR stream
+
+# # Convert to numpy arrays
+# color_image = np.asanyarray(color_frame.get_data())
+# left_ir_image = np.asanyarray(left_ir_frame.get_data())
+# right_ir_image = np.asanyarray(right_ir_frame.get_data())
+
+# # Resize Left IR image to match RGB FOV
+# target_width_left = int(left_ir_intr.width * scale_left_ir)
+# target_height_left = int(left_ir_intr.height * scale_left_ir)
+
+# center_x_left = left_ir_intr.width // 2
+# center_y_left = left_ir_intr.height // 2
+
+# # Crop centered Left IR image
+# x1_left = center_x_left - target_width_left // 2
+# y1_left = center_y_left - target_height_left // 2
+# cropped_left_ir = left_ir_image[y1_left:y1_left + target_height_left, x1_left:x1_left + target_width_left]
+
+# # Resize Left IR to original RGB resolution
+# left_ir_matched = cv2.resize(cropped_left_ir, (color_intr.width, color_intr.height), interpolation=cv2.INTER_LINEAR)
+
+# # Resize Right IR image to match RGB FOV
+# target_width_right = int(right_ir_intr.width * scale_right_ir)
+# target_height_right = int(right_ir_intr.height * scale_right_ir)
+
+# center_x_right = right_ir_intr.width // 2
+# center_y_right = right_ir_intr.height // 2
+
+# # Crop centered Right IR image
+# x1_right = center_x_right - target_width_right // 2
+# y1_right = center_y_right - target_height_right // 2
+# cropped_right_ir = right_ir_image[y1_right:y1_right + target_height_right, x1_right:x1_right + target_width_right]
+
+# # Resize Right IR to original RGB resolution
+# right_ir_matched = cv2.resize(cropped_right_ir, (color_intr.width, color_intr.height), interpolation=cv2.INTER_LINEAR)
+
+# # Convert grayscale IR to 3-channel for display purposes
+# left_ir_matched_color = cv2.cvtColor(left_ir_matched, cv2.COLOR_GRAY2BGR)
+# right_ir_matched_color = cv2.cvtColor(right_ir_matched, cv2.COLOR_GRAY2BGR)
+
+# # Stack side by side for comparison
+# combined = np.hstack((left_ir_matched_color, right_ir_matched_color, color_image))
+
+# # Display the result
+# cv2.imshow("Left IR (left) | Right IR (middle) | RGB (right)", combined)
+
+# cv2.waitKey(0)
+# pipeline.stop()
+# cv2.destroyAllWindows()
+# import pyrealsense2 as rs
+# import cv2
+# import numpy as np
+# import math
+# # Create a pipeline
+# pipeline = rs.pipeline()
+# config = rs.config()
+
+# # Enable RGB and IR streams
+# config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+# config.enable_stream(rs.stream.infrared, 1, 640, 480, rs.format.y8, 30)
+
+# # Start streaming
+# pipeline.start(config)
+
+# # Align IR to RGB
+# align_to = rs.stream.color
+# align = rs.align(align_to)
+# def compute_fov(fx, width):
+#     """Calculate the FOV based on the focal length (fx) and image width."""
+#     return 2 * math.atan(width / (2 * fx)) * 180 / math.pi
+# while True:
+#     frames = pipeline.wait_for_frames()
+#     aligned_frames = align.process(frames)
+
+#     # Get aligned frames
+#     color_frame = aligned_frames.get_color_frame()
+#     ir_frame = aligned_frames.get_infrared_frame(1)  # IR stream 1
+#     profile = pipeline.get_active_profile()
+#     color_intr = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
+#     left_ir_intr = profile.get_stream(rs.stream.infrared, 1).as_video_stream_profile().get_intrinsics()  # Left IR
+#     if not color_frame or not ir_frame:
+#         continue
+
+#     # Convert to numpy
+#     color_image = np.asanyarray(color_frame.get_data())
+#     ir_image = np.asanyarray(ir_frame.get_data())
+#     rgb_fov_x = compute_fov(color_intr.fx, color_intr.width)
+#     left_ir_fov_x = compute_fov(left_ir_intr.fx, left_ir_intr.width)
+#     scale_left_ir = math.tan(math.radians(rgb_fov_x / 2)) / math.tan(math.radians(left_ir_fov_x / 2))
+#     # Resize Left IR image to match RGB FOV
+#     target_width_left = int(left_ir_intr.width * scale_left_ir)
+#     target_height_left = int(left_ir_intr.height * scale_left_ir)
+
+#     center_x_left = left_ir_intr.width // 2
+#     center_y_left = left_ir_intr.height // 2
+
+#     # Crop centered Left IR image
+#     x1_left = center_x_left - target_width_left // 2
+#     y1_left = center_y_left - target_height_left // 2
+#     cropped_left_ir = ir_image[y1_left:y1_left + target_height_left, x1_left:x1_left + target_width_left]
+
+#     # Resize Left IR to original RGB resolution
+#     left_ir_matched = cv2.resize(cropped_left_ir, (color_intr.width, color_intr.height), interpolation=cv2.INTER_LINEAR)
+#     # Convert grayscale IR to 3-channel for display purposes
+#     left_ir_matched_color = cv2.cvtColor(left_ir_matched, cv2.COLOR_GRAY2BGR)
+
+#     # Stack side by side for comparison
+#     combined = np.hstack((left_ir_matched_color, color_image))
+#     # Display
+#     cv2.imshow('RGB Image', combined)
+#     # cv2.imshow('Aligned IR Image', ir_image)
+
+#     if cv2.waitKey(1) & 0xFF == ord('q'):
+#         break
+
+# pipeline.stop()
+# cv2.destroyAllWindows()

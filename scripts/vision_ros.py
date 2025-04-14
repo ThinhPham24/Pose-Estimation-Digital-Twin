@@ -63,9 +63,9 @@ try:
         # Inital Realsense camera
         real_camera = stereo_realsense()
         im_color, imL, imR, _, intrinsics = real_camera.capture_frame()
-        print("Size img color", im_color.shape)
-        print("Size img color L", imL.shape)
-        print("Size img color R", imR.shape)
+        # print("Size img color", im_color.shape)
+        # print("Size img color L", imL.shape)
+        # print("Size img color R", imR.shape)
 
         # cv2.imshow("image", im_color)
         # cv2.imshow("imL", imL)

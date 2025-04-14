@@ -7,6 +7,5 @@
 *scripts/checkpoints/*.pth
 *scripts/Stereo_images/*.ply
 *scripts/Calibrated/*.txt
-
 *.pth
 *.pth

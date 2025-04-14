@@ -20,6 +20,9 @@ import trimesh
 import os
 from utils.draw_bbox import draw_detections, draw_3d_bbox_on_point_cloud
 import time
+from utils.utils import mapImageLR
+import torch
+import torch.nn.functional as F
 class ObjectPointCloudGenerator:
     def __init__(self, defom_ckpt, yoloe_ckpt, device="cuda:0"):
         self.device = torch.device(device) if torch.cuda.is_available() else torch.device("cpu")
@@ -249,6 +252,20 @@ class ObjectPointCloudGenerator:
         img_np = np.array(img_np).astype(np.uint8)
         img = torch.from_numpy(img_np).permute(2, 0, 1).float()
         return img[None].to(self.device)
+    def read_image(self,image):
+        Img = cv2.imread(image)
+        return Img
+    def _to_torch(self, image, size = (1000, 750)):
+        if isinstance(image, np.ndarray):
+            # Convert BGR to RGB and resize
+            img_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            img_np = cv2.resize(img_np, size, cv2.INTER_AREA)  # size=(width, height)
+            # Convert to tensor
+            img = torch.from_numpy(img_np).permute(2, 0, 1).float()  # Normalize to [0,1]
+            return img.unsqueeze(0).to(self.device)  # Add batch dimension
+        else:
+            # If it's already a tensor (B, C, H, W), resize using interpolate
+            return F.interpolate(image, size=(size[1], size[0]), mode='bilinear', align_corners=False)
 
     def reconstruct_2d_to_3d(self, ImL, mask_img, disparity, map_calib_file):
         cv_file = cv2.FileStorage()
@@ -370,7 +387,7 @@ class ObjectPointCloudGenerator:
                     post_mask = self._mask_processing(_mask)
                     points, colors = self.reconstruct_2d_to_3d(image_color, post_mask, disp_pr, map_calib_file)
                     # points, colors = self.calculate_2d_depth(un_image, post_mask, disp_pr)
-                    pcd = self.compute_normal(points, colors )
+                    pcd = self.compute_normal(points, colors)
                     re_box = self.convert_box(box)
                     image_crop = self.crop_image_by_bbox(un_image, re_box)
                     pred_inf.append([pcd, image_crop, cls_name])
