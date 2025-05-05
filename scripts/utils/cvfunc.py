@@ -2,7 +2,8 @@ import os
 import math
 import numpy as np
 import cv2
-
+import math
+from utils.transforms import euler2Rotation
 def resizeImage(img, percent):
     """
     Resize an image by a given percentage.
@@ -388,3 +389,103 @@ def perpendicularArrow(p1, p2, length=50):
     perPoint2 = (int(p2[0] + perpendicularVector2[0]), int(p2[1] + perpendicularVector2[1]))
     
     return perPoint1, perPoint2
+def rotation_matrix_to_euler_angles(R):
+    # Check if the rotation matrix is valid
+    if R.shape != (3, 3):
+        raise ValueError("Rotation matrix must be 3x3")
+
+    # Calculate pitch, yaw, and roll (assuming XYZ convention)
+    pitch = np.arctan2(R[2, 1], R[2, 2])  # Rotation around Y-axis (pitch)
+    yaw = np.arcsin(-R[2, 0])             # Rotation around Z-axis (yaw)
+    roll = np.arctan2(R[1, 0], R[0, 0])   # Rotation around X-axis (roll)
+
+    return (np.degrees(pitch), np.degrees(yaw), np.degrees(roll))
+def camera2robot(posture, robotPose):
+    # cam2end = np.array([[-0.0100589,0.999928,0.00656403,-63.0562],
+    #                     [0.999931,0.0100184,0.00616924,30.435],
+    #                     [0.00610303,0.00662563,-0.999959,56.6109],
+    #                     [0,0,0,1]]) 
+    cam2end = np.array([[0.0113561,0.999912,-0.00686581,-64.8306],
+                        [-0.999866,0.0112741,-0.0118744,14.7143],
+                        [-0.0117959,0.00699974,0.999906,56.6969],
+                        [0,0,0,1]]) 
+    end2tool = np.array([[1,0,0,-0.063],
+                 [0,1,0, -0.239],
+                 [0,0,1, 79.049],
+                 [0,0,0,1]])
+    end2tool_ = np.array([[1,0,0,0],
+                 [0,1,0,0],
+                 [0,0,1, -125],
+                 [0,0,0,1]])  
+    
+    ob2cam = euler2Rotation(posture)
+    robotPose_ro = euler2Rotation(robotPose)
+    # print("ob2cam", ob2cam)
+    A = robotPose_ro @ np.linalg.inv(end2tool) @ cam2end
+    # A = robotPose_ro@ cam2end
+    # print("A", A)
+    B =  A @  ob2cam
+    # print("B", B)
+    # target = B @ end2tool_
+    target = B 
+    return target
+
+def get_normal(depth_refine, fx=-1, fy=-1, cx=-1, cy=-1, bbox=np.array([0]), refine=True):
+    # Copied from https://github.com/kirumang/Pix2Pose/blob/master/pix2pose_util/common_util.py
+    """
+    fast normal computation
+    """
+    res_y = depth_refine.shape[0]
+    res_x = depth_refine.shape[1]
+    centerX = cx
+    centerY = cy
+    constant_x = 1 / fx
+    constant_y = 1 / fy
+
+    if refine:
+        depth_refine = np.nan_to_num(depth_refine)
+        mask = np.zeros_like(depth_refine).astype(np.uint8)
+        mask[depth_refine == 0] = 1
+        depth_refine = depth_refine.astype(np.float32)
+        depth_refine = cv2.inpaint(depth_refine, mask, 2, cv2.INPAINT_NS)
+        depth_refine = depth_refine.astype(np.float32)
+        depth_refine = ndimage.gaussian_filter(depth_refine, 2)
+
+    uv_table = np.zeros((res_y, res_x, 2), dtype=np.int16)
+    column = np.arange(0, res_y)
+    uv_table[:, :, 1] = np.arange(0, res_x) - centerX  # x-c_x (u)
+    uv_table[:, :, 0] = column[:, np.newaxis] - centerY  # y-c_y (v)
+
+    if bbox.shape[0] == 4:
+        uv_table = uv_table[bbox[0] : bbox[2], bbox[1] : bbox[3]]
+        v_x = np.zeros((bbox[2] - bbox[0], bbox[3] - bbox[1], 3))
+        v_y = np.zeros((bbox[2] - bbox[0], bbox[3] - bbox[1], 3))
+        normals = np.zeros((bbox[2] - bbox[0], bbox[3] - bbox[1], 3))
+        depth_refine = depth_refine[bbox[0] : bbox[2], bbox[1] : bbox[3]]
+    else:
+        v_x = np.zeros((res_y, res_x, 3))
+        v_y = np.zeros((res_y, res_x, 3))
+        normals = np.zeros((res_y, res_x, 3))
+
+    uv_table_sign = np.copy(uv_table)
+    uv_table = np.abs(np.copy(uv_table))
+
+    dig = np.gradient(depth_refine, 2, edge_order=2)
+    v_y[:, :, 0] = uv_table_sign[:, :, 1] * constant_x * dig[0]
+    v_y[:, :, 1] = depth_refine * constant_y + (uv_table_sign[:, :, 0] * constant_y) * dig[0]
+    v_y[:, :, 2] = dig[0]
+
+    v_x[:, :, 0] = depth_refine * constant_x + uv_table_sign[:, :, 1] * constant_x * dig[1]
+    v_x[:, :, 1] = uv_table_sign[:, :, 0] * constant_y * dig[1]
+    v_x[:, :, 2] = dig[1]
+
+    cross = np.cross(v_x.reshape(-1, 3), v_y.reshape(-1, 3))
+    norm = np.expand_dims(np.linalg.norm(cross, axis=1), axis=1)
+    norm[norm == 0] = 1
+    cross = cross / norm
+    if bbox.shape[0] == 4:
+        cross = cross.reshape((bbox[2] - bbox[0], bbox[3] - bbox[1], 3))
+    else:
+        cross = cross.reshape(res_y, res_x, 3)
+    cross = np.nan_to_num(cross)
+    return cross

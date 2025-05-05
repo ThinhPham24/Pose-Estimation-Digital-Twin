@@ -45,9 +45,9 @@ def draw_axis(img, R, t, K, axis_length=0.05):
     proj = np.array(proj, dtype=np.int32)
 
     o, x, y, z = proj
-    img = cv2.arrowedLine(img, tuple(o), tuple(x), (0, 0, 255), 2)   # X - blue
+    img = cv2.arrowedLine(img, tuple(o), tuple(x), (255, 0, 0), 2)   # X - Red
     img = cv2.arrowedLine(img, tuple(o), tuple(y), (0, 255, 0), 2)   # Y - green
-    img = cv2.arrowedLine(img, tuple(o), tuple(z), (255, 0, 0), 2)   # Z - Red
+    img = cv2.arrowedLine(img, tuple(o), tuple(z), (0, 0, 255), 2)   # Z - blue
 
     return img
 def get_3d_bbox(scale, shift = 0):
@@ -104,7 +104,7 @@ def draw_3d_pts(img, imgpts, color, size=1):
         img = cv2.circle(img, (point[0], point[1]), size, color, -1)
     return img
 
-def draw_detections(image,pred_rots, pred_trans, model_points, intrinsics, color=(255, 0, 0)):
+def draw_detections(image,pred_rots, pred_trans, model_points, intrinsics, color=(255, 255, 255)):
     """
     Draws 3D bounding boxes and projected point clouds onto an image.
 
@@ -124,16 +124,17 @@ def draw_detections(image,pred_rots, pred_trans, model_points, intrinsics, color
     draw_image_bbox = image.copy()
     draw_image_bbox = cv2.cvtColor(draw_image_bbox, cv2.COLOR_GRAY2BGR)
 
-    # Compute scale and shift for the bounding box
-    scale = (np.max(model_points, axis=0) - np.min(model_points, axis=0))
-    shift = np.mean(model_points, axis=0)
-    bbox_3d = get_3d_bbox(scale, shift)
-
-    # Sample 3D points from the model
-    choose = np.random.choice(np.arange(len(model_points)), 512, replace=False)
-    pts_3d = model_points[choose].T  # Shape (3, 512)
+    
 
     for ind in range(num_pred_instances):
+        # Compute scale and shift for the bounding box
+        scale = (np.max(model_points[ind], axis=0) - np.min(model_points[ind], axis=0))
+        shift = np.mean(model_points[ind], axis=0)
+        bbox_3d = get_3d_bbox(scale, shift)
+
+        # Sample 3D points from the model
+        choose = np.random.choice(np.arange(len(model_points[ind])), 512, replace=False)
+        pts_3d = model_points[ind][choose].T  # Shape (3, 512)
         rot_matrix = pred_rots[ind]  # (3,3)
         trans_vector = pred_trans[ind]  # (3,)
         # Transform 3D bounding box

@@ -104,6 +104,7 @@ import os
 import pyrealsense2 as rs
 import cv2
 import numpy as np
+import time
 class stereo_realsense:
     def __init__(self):
         # self.pipeline = rs.pipeline()
@@ -118,17 +119,20 @@ class stereo_realsense:
         # # Start streaming
         # self.profile = self.pipeline.start(config)
         self.pipeline = rs.pipeline()
+        
         config = rs.config()
         config.enable_stream(rs.stream.infrared, 1, 640, 480, rs.format.y8, 30)
         config.enable_stream(rs.stream.infrared, 2, 640, 480, rs.format.y8, 30)
         config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
         self.profile = self.pipeline.start(config)
+        time.sleep(10)  # Add this line
         # # Get the depth sensor and disable the emitter (dot projector)
         sensor = self.profile.get_device().first_depth_sensor()
         if sensor.supports(rs.option.emitter_enabled):
             sensor.set_option(rs.option.emitter_enabled, 0)  # 0 = OFF, 1 = ON
     def capture_frame(self):
+        
         frames = self.pipeline.wait_for_frames()
         ir1 = frames.get_infrared_frame(1)
         ir2 = frames.get_infrared_frame(2)

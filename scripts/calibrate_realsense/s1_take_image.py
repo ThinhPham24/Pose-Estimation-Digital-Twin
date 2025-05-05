@@ -6,6 +6,7 @@ pipeline = rs.pipeline()
 config = rs.config()
 
 # Enable IR and depth streams
+config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 config.enable_stream(rs.stream.infrared, 1, 640, 480, rs.format.y8, 30)
 config.enable_stream(rs.stream.infrared, 2, 640, 480, rs.format.y8, 30)
 config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
@@ -20,7 +21,7 @@ if sensor.supports(rs.option.emitter_enabled):
     print("Emitter turned OFF")
 
 # Continue with your streaming loop
-output_dir = "/home/airlab/Desktop/DEFOM_Stereo/"
+output_dir = "/home/airlab/Desktop/DigitalTwin_PoseEstimation/scripts/calibrate_realsense/"
 
 i = 0
 try:

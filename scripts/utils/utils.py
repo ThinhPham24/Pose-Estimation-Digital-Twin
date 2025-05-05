@@ -4,7 +4,11 @@ import sys
 import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-
+import os
+import numpy as np
+import re
+import sys
+import cv2
 import numpy as np
 import random
 
@@ -116,11 +120,7 @@ class Logger:
 
     def close(self):
         self.writer.close()
-import os
-import numpy as np
-import re
-import sys
-import cv2
+
 def resizedImg(img, percent):
     width = int(img.shape[1] * percent / 100)
     height = int(img.shape[0] * percent / 100)
@@ -293,6 +293,7 @@ def mask_left_image(imgL, disparity, min_disp=256, max_disp=512):
     masked_img = imgL * mask_3ch  # Keeps only valid disparity regions
 
     return masked_img
+
 def soft_remove_background(imgL, disparity, min_disp=10, max_disp=200, blur_size=15):
     """Remove background with a soft edge transition."""
     # Normalize disparity to [0, 255] for better processing

@@ -58,12 +58,27 @@ class ObjectPointCloudGenerator:
         model.eval()
         return model
 
-    def _load_yoloe(self, model_path, source_image='ultralytics/assets/Test3.png', class_name=["cude"]):
+    def _load_yoloe(self, model_path, source_image='ultralytics/assets/ref.png', class_name=["obj2"]):
         see_any_thing = YOLOE(model_path).to(self.device)
+        # visuals = dict(
+        #     bboxes=np.array([[213.52, 125.8, 320.98, 250.54]]),
+        #     cls=np.array([0])
+        # )
         visuals = dict(
-            bboxes=np.array([[178.2, 218.1, 365.2, 372.1]]),
+            bboxes=np.array([[398.52, 158.8, 510.98, 301.54]]),
             cls=np.array([0])
         )
+        # # Two classes
+        # visuals = dict(
+        #     bboxes=np.concatenate([
+        #         np.array([[213.52, 125.8, 320.98, 250.54], [398, 158, 510, 301]]),
+        #         np.array([[213, 125, 320, 250]])
+        #     ], axis=0),
+        #     cls=np.concatenate([
+        #         np.array([0, 1]),
+        #         np.array([0])
+        #     ], axis=0)
+        # )
         image_size = 640
         see_any_thing.predict(source_image, imgsz=image_size, prompts=visuals, predictor=YOLOEVPSegPredictor, return_vpe=True)
         see_any_thing.set_classes(class_name, see_any_thing.predictor.vpe)
@@ -274,12 +289,12 @@ class ObjectPointCloudGenerator:
         Q1_map = cv_file.getNode('q').mat()
         cv_file.release()
         h, w = disparity.shape
-        # Q = np.float32([
-        #     [1, 0, 0, -w / 2.0],
-        #     [0, -1, 0, h / 2.0],
-        #     [0, 0, 0, Q1_map[2, 3]],
-        #     [0, 0, -Q1_map[3, 2], Q1_map[3, 3]]
-        # ])
+        Q = np.float32([
+        [1, 0, 0, -w / 2.0],
+        [0, -1, 0, h / 2.0],
+        [0, 0, 0, Q1_map[2, 3]],
+        [0, 0, -Q1_map[3, 2], Q1_map[3, 3]]
+        ])
         valid_disp_mask = disparity > 0
         if mask_img.dtype != bool:
             mask_img = mask_img > 0
@@ -377,7 +392,8 @@ class ObjectPointCloudGenerator:
                 cv2.imshow("Result", seg_ob)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
-                results = self.apply_nms(r)
+                # results = self.apply_nms(r)
+                results = r
                 pred_boxes = results.boxes.xyxy.cpu().numpy()
                 clasess = results.boxes.data.cpu().numpy()
                 pred_masks = results.masks.data.cpu().numpy()
