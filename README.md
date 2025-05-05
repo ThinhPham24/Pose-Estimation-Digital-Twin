@@ -4,7 +4,7 @@
 - Use the ICP algorithm (different methods) to estimate the pose of the object.
 
 # Installations
-```python
+```
 pip install -r requirements.txt
 ```
 
