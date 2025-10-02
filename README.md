@@ -58,6 +58,6 @@ If you find our work useful in your research, please consider citing:
   author  = {Dong, Quang Huan and Pham, The-Thinh and Nguyen, Tuan-Khanh and Tran, Chi-Cuong and Tran, Hoang-Huy and Do-Duy, Tan and Nguyen, Khang Hoang Vinh and Nguyen, Quang-Chien},
   journal = {EAI Endorsed Transactions on AI and Robotics},
   year    = {2025},
-  doi     = {10.4108/airo.9676}
+  doi     = {https://doi.org/10.4108/airo.9676}
 }
 ```
