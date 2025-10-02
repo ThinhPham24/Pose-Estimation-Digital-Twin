@@ -61,7 +61,7 @@ pip install -r requirements.txt
 If you find our work useful in your research, please consider citing:
 
 ```bibtex
-@article{quan2025cadpose,
+@article{huan2025cadpose,
   title   = {CAD-guided 6D pose estimation with deep learning in digital twin for industrial collaborative robot manipulation},
   author  = {Dong, Quang Huan and Pham, The-Thinh and Nguyen, Tuan-Khanh and Tran, Chi-Cuong and Tran, Hoang-Huy and Do-Duy, Tan and Nguyen, Khang Hoang Vinh and Nguyen, Quang-Chien},
   journal = {EAI Endorsed Transactions on AI and Robotics},
