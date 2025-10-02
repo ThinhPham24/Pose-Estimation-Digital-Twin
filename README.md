@@ -60,7 +60,6 @@ pip install -r requirements.txt
 
 Please cite our paper if you find our work useful in your research.
 
-'''
 @paper{quan2025,
   title={CAD-guided 6D pose estimation with deep learning in digital twin for industrial collaborative robot manipulation},
   author{Quang Huan Dong, The-Thinh Pham, Tuan-Khanh Nguyen, Chi-Cuong Tran, Hoang-Huy Tran, Tan Do-Duy, Khang Hoang Vinh Nguyen, Quang-Chien Nguyen},
@@ -68,7 +67,7 @@ Please cite our paper if you find our work useful in your research.
   year={2025},
   doi = {https://doi.org/10.4108/airo.9676},
 }
-'''
+
 
 
 
