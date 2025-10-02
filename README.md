@@ -14,14 +14,14 @@ pip install -r requirements.txt
 <img src='Assets/figure1_workflow.pdf'>
 </center>
 
-// # Results:
-// <center>
-// <img src='Assets/demo.gif'>
-// </center>
+# Results:
+<center>
+<img src='Assets/demo.gif'>
+</center>
 
-// <center>
-// <img src='Pose_results/result.gif'>
-// </center>
+<center>
+<img src='Pose_results/result.gif'>
+</center>
 
 
 # Some code have been borrowed by Refs
