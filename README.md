@@ -14,7 +14,7 @@ pip install -r requirements.txt
   <img src="Assets/figure1_workflow.jpg" alt="Workflow" width="600"/>
 </p>
 
-# Some code have been borrowed by Refs
+# Some code has been borrowed by Refs
 
 
 1. [Deep Learning-Based Object Pose Estimation: A Comprehensive Survey](https://github.com/CNJianLiu/Awesome-Object-Pose-Estimation)
