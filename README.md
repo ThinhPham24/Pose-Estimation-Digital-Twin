@@ -23,7 +23,7 @@ pip install -r requirements.txt
 <img src='Pose_results/result.gif'>
 </center>
 
-# Refs
+# Some code have been borrowed by Refs
 
 1. [Deep Learning-Based Object Pose Estimation: A Comprehensive Survey](https://github.com/CNJianLiu/Awesome-Object-Pose-Estimation)
 
@@ -56,20 +56,20 @@ pip install -r requirements.txt
 
 15. [ZePHyr](https://github.com/r-pad/zephyr)
 
+# Citation
 
+Please cite our paper if you find our work useful in your research.
 
-# 2025-04-07: 
-## Some works did
-1. Add some methods: traditional method, DEFOM+SeeAnything, RAFT+SeeAnything
+'''
+@paper{quan2025,
+  title={CAD-guided 6D pose estimation with deep learning in digital twin for industrial collaborative robot manipulation},
+  author{Quang Huan Dong, The-Thinh Pham, Tuan-Khanh Nguyen, Chi-Cuong Tran, Hoang-Huy Tran, Tan Do-Duy, Khang Hoang Vinh Nguyen, Quang-Chien Nguyen},
+  Journal={EAI Endorsed Transactions on AI and Robotics},
+  year={2025},
+  doi = {https://doi.org/10.4108/airo.9676},
+}
+'''
 
-
-## Need to do:
-
-1. Evaluate the accuracy of Seeing Anything combined with our proposal - Use cosine similarity to enhance the accuracy
-
-2. Improve the ICP matching
-
-3. Evaluate the pose of our proposal get the results for paper
 
 
 
