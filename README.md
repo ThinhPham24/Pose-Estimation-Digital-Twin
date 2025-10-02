@@ -11,7 +11,7 @@ pip install -r requirements.txt
 # Workflow
 
 <p align="center">
-  <img src="Assets/figure1_workflow.png" alt="Workflow" width="600"/>
+  <img src="Assets/figure1_workflow.pdf" alt="Workflow" width="600"/>
 </p>
 
 # Some code have been borrowed by Refs
