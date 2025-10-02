@@ -8,21 +8,9 @@
 pip install -r requirements.txt
 ```
 
-# There is workflow.
+# Workflow
 
-<center>
-<img src='Assets/Algorithm_v2.gif'>
-</center>
-
-# Results:
-<center>
-<img src='Assets/demo.gif'>
-</center>
-
-<center>
-<img src='Pose_results/result.gif'>
-</center>
-
+[View Workflow Figure (PDF)](Assets/figure1_workflow.pdf)
 
 # Some code have been borrowed by Refs
 
