@@ -68,8 +68,4 @@ If you find our work useful in your research, please consider citing:
   year    = {2025},
   doi     = {10.4108/airo.9676}
 }
-
-
-
-
-
+```
