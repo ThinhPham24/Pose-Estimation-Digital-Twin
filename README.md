@@ -58,14 +58,15 @@ pip install -r requirements.txt
 
 # Citation
 
-Please cite our paper if you find our work useful in your research.
+If you find our work useful in your research, please consider citing:
 
-@paper{quan2025,
-  title={CAD-guided 6D pose estimation with deep learning in digital twin for industrial collaborative robot manipulation},
-  author{Quang Huan Dong, The-Thinh Pham, Tuan-Khanh Nguyen, Chi-Cuong Tran, Hoang-Huy Tran, Tan Do-Duy, Khang Hoang Vinh Nguyen, Quang-Chien Nguyen},
-  Journal={EAI Endorsed Transactions on AI and Robotics},
-  year={2025},
-  doi = {https://doi.org/10.4108/airo.9676},
+```bibtex
+@article{quan2025cadpose,
+  title   = {CAD-guided 6D pose estimation with deep learning in digital twin for industrial collaborative robot manipulation},
+  author  = {Dong, Quang Huan and Pham, The-Thinh and Nguyen, Tuan-Khanh and Tran, Chi-Cuong and Tran, Hoang-Huy and Do-Duy, Tan and Nguyen, Khang Hoang Vinh and Nguyen, Quang-Chien},
+  journal = {EAI Endorsed Transactions on AI and Robotics},
+  year    = {2025},
+  doi     = {10.4108/airo.9676}
 }
 
 
